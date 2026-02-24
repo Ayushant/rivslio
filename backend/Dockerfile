@@ -16,6 +16,7 @@ RUN npx prisma generate
 # Build NestJS
 RUN npm run build
 
-EXPOSE 4000
+ENV PORT=10000
+EXPOSE 10000
 
 CMD ["npm", "run", "start:prod"]
