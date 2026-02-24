@@ -15,7 +15,7 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwt: JwtService,
-  ) {}
+  ) { }
 
   async register(dto: RegisterDto) {
     const existing = await this.prisma.user.findUnique({
@@ -78,14 +78,21 @@ export class AuthService {
   private signTokens(userId: string, email: string, role: string) {
     const payload = { sub: userId, email, role };
 
+    const accessSecret = process.env['JWT_SECRET'];
+    const refreshSecret = process.env['JWT_REFRESH_SECRET'];
+
+    if (!accessSecret || !refreshSecret) {
+      throw new Error('JWT secrets are not configured in environment variables');
+    }
+
     const accessOptions: JwtSignOptions = {
-      secret: process.env['JWT_SECRET'],
-      expiresIn: 60 * 15, // 15 minutes in seconds
+      secret: accessSecret,
+      expiresIn: 60 * 15,
     };
 
     const refreshOptions: JwtSignOptions = {
-      secret: process.env['JWT_REFRESH_SECRET'],
-      expiresIn: 60 * 60 * 24 * 7, // 7 days in seconds
+      secret: refreshSecret,
+      expiresIn: 60 * 60 * 24 * 7,
     };
 
     const accessToken = this.jwt.sign(payload, accessOptions);

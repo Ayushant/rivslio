@@ -16,7 +16,7 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(private authService: AuthService) { }
 
   @Post('register')
   async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) res: Response) {
@@ -56,11 +56,11 @@ export class AuthController {
   }
 
   private setRefreshCookie(res: Response, token: string) {
-    const isProduction = process.env['NODE_ENV'] === 'production' || !!process.env['RENDER'];
+    const isLocal = process.env['NODE_ENV'] !== 'production' && !process.env['RENDER'];
     res.cookie('refresh_token', token, {
       httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? 'none' : 'lax',
+      secure: !isLocal,
+      sameSite: isLocal ? 'lax' : 'none',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
   }
