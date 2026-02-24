@@ -13,7 +13,19 @@ async function bootstrap() {
   app.use(cookieParser());
 
   app.enableCors({
-    origin: process.env['FRONTEND_URL'] ?? 'http://localhost:3000',
+    origin: (origin, callback) => {
+      const allowed = process.env['FRONTEND_URL'] ?? 'http://localhost:3000';
+      if (
+        !origin ||
+        origin === allowed ||
+        origin.endsWith('.vercel.app') ||
+        origin.startsWith('http://localhost')
+      ) {
+        callback(null, true);
+      } else {
+        callback(null, false);
+      }
+    },
     credentials: true,
   });
 
