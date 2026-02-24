@@ -23,7 +23,7 @@ async function bootstrap() {
       if (
         !origin ||
         origin === allowed ||
-        origin.endsWith('.vercel.app') ||
+        origin.includes('vercel.app') ||
         origin.startsWith('http://localhost')
       ) {
         callback(null, true);
