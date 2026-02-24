@@ -2,6 +2,7 @@ import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
+import { CortexService } from './cortex.service';
 
 interface SummaryJobData {
   blogId: string;
@@ -11,7 +12,10 @@ interface SummaryJobData {
 export class BlogSummaryProcessor extends WorkerHost {
   private readonly logger = new Logger(BlogSummaryProcessor.name);
 
-  constructor(private prisma: PrismaService) {
+  constructor(
+    private prisma: PrismaService,
+    private cortex: CortexService,
+  ) {
     super();
   }
 
@@ -45,42 +49,19 @@ export class BlogSummaryProcessor extends WorkerHost {
         event: 'job_failed',
         error: err instanceof Error ? err.message : String(err),
       });
-      throw err; // BullMQ will retry based on queue config
+      throw err;
     }
   }
 
   private async generateSummary(title: string, content: string): Promise<string> {
-    const apiKey = process.env['CORTEXONE_API_KEY'];
+    const summary = await this.cortex.generateSummary(title, content);
 
-    if (!apiKey) {
-      this.logger.warn('CORTEXONE_API_KEY not set, using fallback summary');
-      return this.fallbackSummary(content);
+    if (summary) {
+      return summary;
     }
 
-    try {
-      const response = await fetch('https://cortexone.rival.io/api/v1/run', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          function: 'blog-summary-generator',
-          input: { title, content },
-        }),
-      });
-
-      if (!response.ok) {
-        this.logger.warn(`CortexOne returned ${response.status}, using fallback`);
-        return this.fallbackSummary(content);
-      }
-
-      const result = (await response.json()) as { output?: { summary?: string } };
-      return result?.output?.summary ?? this.fallbackSummary(content);
-    } catch {
-      this.logger.warn('CortexOne call failed, using fallback summary');
-      return this.fallbackSummary(content);
-    }
+    this.logger.warn('CortexOne summary failed or skipped, using fallback');
+    return this.fallbackSummary(content);
   }
 
   private fallbackSummary(content: string): string {
